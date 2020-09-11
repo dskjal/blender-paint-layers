@@ -75,6 +75,9 @@ class LAYER_PT_panel(bpy.types.Panel):
                 col.separator()
                 col.label(text='Color Management')
                 col.prop(mat, 'layer_use_emission', text="Use Emission")
+                layout.use_property_split = True
+                layout.use_property_decorate = False  # No animation.
+                col = layout.grid_flow(row_major=True, columns=0, even_columns=False, even_rows=False, align=True)
                 col.prop(bpy.context.scene.view_settings, 'view_transform')
             except Exception:
                 print("Can't find multiply node for opacity: " + layer.multiply)
