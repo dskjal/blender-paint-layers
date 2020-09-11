@@ -20,8 +20,8 @@ def get_input_node(layer):
     except IndexError as e:
         layer_input = None
     return layer_input
-    
-    
+
+
 def get_output_node(layer):
     nodes = bpy.context.object.active_material.node_tree.nodes
     layer_output = None
@@ -42,8 +42,9 @@ def offset_layer(layer, offset):
     nodes[layer.img_tex].location.x += offset
     try:
         nodes[layer.add].location.x += offset
-    except:
+    except Exception:
         pass
+
 
 def get_alpha_output(context, index):
     mat = context.object.active_material

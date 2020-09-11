@@ -21,86 +21,91 @@ Created by DAVID DIGIOIA
 bl_info = {
     "name": "Layers",
     "description": "Layer functionality using nodes for texture paint",
-    "author": "David DiGioia",
-    "version": (0, 0, 1),
-    "blender": (2, 79, 0),
-    "location": "View3D > Tools > Layers",
+    "author": "David DiGioia, Alexander Belyakov, dskjal",
+    "version": (0, 0, 2),
+    "blender": (2, 83, 6),
+    "location": "View3D > Tool > Layers",
     "warning": "This addon is still in development.",
     "wiki_url": "",
-    "category": "Paint" }
+    "category": "Paint"
+}
 
 
 import bpy
+from .data.layer_data import Layer
+from .data.layer_img_data import LayerImgData
+from .data.layer_shader_data import LayerShaders
+from .operators.delete_layer import LAYER_OT_dellayer
+from .operators.move_layer import LAYER_OT_movelayer
+from .operators.new_layer import LAYER_OT_newlayer, change_shader
+from .operators.merge_visible_layers import MergeVisibleLayers
+from .ui.layer_list import MATERIAL_UL_layerlist
+from .ui.layer_panel import LAYER_PT_panel
 
+classes = (
+    Layer,
+    LayerImgData,
+    LayerShaders,
+    LAYER_OT_dellayer,
+    LAYER_OT_movelayer,
+    LAYER_OT_newlayer,
+    MergeVisibleLayers,
+    MATERIAL_UL_layerlist,
+    LAYER_PT_panel,
+)
 
-# load and reload submodules
-##################################
-
-import importlib
-from . import developer_utils
-importlib.reload(developer_utils)
-modules = developer_utils.setup_addon_modules(__path__, __name__, "bpy" in locals())
-
-
-
-# register
-##################################
-
-import traceback
 
 def register():
-    try: bpy.utils.register_module(__name__)
-    except: traceback.print_exc()
-    
-    #<David>
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
+    def use_emission_update(self, context):
+        change_shader()
+
     def get_index(self):
         return self.layer_private_index
-    
+
     def set_index(self, index):
         layer_list = bpy.context.object.active_material.layer_list
-        
+
         if index < 0 or index >= len(layer_list):
             self.layer_private_index = index
             return
-        
+
         layer = bpy.context.object.active_material.layer_list[index]
         img_name = layer.texture
-        
+
         # Need to update scene in order for slots to update in time
-        bpy.context.scene.update()
-        
+        layer = bpy.context.view_layer
+        layer.update()
+
         slots = bpy.context.object.active_material.texture_paint_images
         slot_index = None
         for i, slot in enumerate(slots):
             if slot.name == img_name:
-                slot_index = i    
+                slot_index = i
         try:
             bpy.context.object.active_material.paint_active_slot = slot_index
         except TypeError as e:
             print("No slot names match layer name. There are probably missing slots")
             print("Error: " + str(e))
-        self.layer_private_index= index
-    
-    bpy.types.Material.layer_list = bpy.props.CollectionProperty(type = bpy.types.Layer)
-    bpy.types.Material.layer_index = bpy.props.IntProperty(name = "Index for layer list", default = 0, \
-                                                            get=get_index, set=set_index)
-    bpy.types.Material.layer_private_index = bpy.props.IntProperty(name = "PRIVATE layer index", default = 0)
-    bpy.types.Material.layer_shaders = bpy.props.PointerProperty(type = bpy.types.LayerShaders)
-    bpy.types.Material.layer_img_data = bpy.props.PointerProperty(type = bpy.types.LayerImgData)
-    #</David>
-    
-    print("Registered {} with {} modules".format(bl_info["name"], len(modules)))
+        self.layer_private_index = index
+
+    bpy.types.Material.layer_list = bpy.props.CollectionProperty(type=Layer)
+    bpy.types.Material.layer_index = bpy.props.IntProperty(name="Index for layer list", default=0, get=get_index, set=set_index)
+    bpy.types.Material.layer_private_index = bpy.props.IntProperty(name="PRIVATE layer index", default=0)
+    bpy.types.Material.layer_shaders = bpy.props.PointerProperty(type=LayerShaders)
+    bpy.types.Material.layer_img_data = bpy.props.PointerProperty(type=LayerImgData)
+    bpy.types.Material.layer_use_emission = bpy.props.BoolProperty(name="Use Emission", default=False, update=use_emission_update)
+
 
 def unregister():
-    try: bpy.utils.unregister_module(__name__)
-    except: traceback.print_exc()
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
 
-    #<David>
+    del bpy.types.Material.layer_use_emission
     del bpy.types.Material.layer_list
     del bpy.types.Material.layer_index
     del bpy.types.Material.layer_private_index
     del bpy.types.Material.layer_shaders
     del bpy.types.Material.layer_img_data
-    #</David>
-
-    print("Unregistered {}".format(bl_info["name"]))
